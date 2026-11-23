@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRILLION: Endless Dive</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #031529;
+            color: #e0f7fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 12px;
+            overflow-x: hidden;
+        }
+
+        /* Unified All-in-One Ocean Arena */
+        #ocean-arena {
+            position: relative;
+            width: 100%;
+            max-width: 540px;
+            min-height: 600px;
+            border-radius: 22px;
+            border: 2px solid #00e5ff;
+            background: linear-gradient(180deg, #094074 0%, #042242 40%, #010c1c 80%, #000205 100%);
+            box-shadow: 0 0 45px rgba(0, 229, 255, 0.25);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            transition: background 1.2s ease;
+        }
+
+        /* Animated Water Currents & Rising Bubbles */
+        .bubble {
+            position: absolute;
+            bottom: -20px;
+            background: rgba(0, 229, 255, 0.25);
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: rise linear infinite;
+            z-index: 1;
+        }
+        @keyframes rise {
+            0% { transform: translateY(0) scale(1); opacity: 0.8; }
+            100% { transform: translateY(-650px) scale(1.5); opacity: 0; }
+        }
+
+        /* Background Depth Lines */
+        .depth-grid {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 70px 14px 20px 14px;
+            opacity: 0.25;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #4dd0e1;
+        }
+        .depth-line {
+            border-bottom: 1px dashed #00e5ff;
+            text-align: right;
+            padding-bottom: 2px;
+        }
+
+        /* Top HUD */
+        .hud-top {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            color: #00e5ff;
+            text-shadow: 0 0 12px rgba(0, 229, 255, 0.7);
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(0, 12, 28, 0.75);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        /* Timer Bar */
+        #timer-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 6px;
+            margin-top: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 229, 255, 0.2);
+        }
+        #timer-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #00e676, #00e5ff);
+            transition: width 0.1s linear, background 0.3s;
+        }
+
+        /* Swimming Krill Stage inside the Arena */
+        #swim-stage {
+            position: relative;
+            z-index: 8;
+            height: 130px;
+            width: 100%;
+            margin: 8px 0;
+        }
+        #krill-swimmer {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.6rem;
+            filter: drop-shadow(0 0 16px #00e5ff);
+            transition: top 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+            user-select: none;
+        }
+        .krill-idle {
+            animation: floatIdle 2.2s ease-in-out infinite;
+        }
+        @keyframes floatIdle {
+            0%, 100% { transform: translateX(-50%) translateY(0px) rotate(-4deg); }
+            50% { transform: translateX(-50%) translateY(-8px) rotate(4deg); }
+        }
+        .krill-burst {
+            animation: diveBurst 0.55s ease-in-out 2;
+        }
+        @keyframes diveBurst {
+            0% { transform: translateX(-50%) scale(1) rotate(0deg); }
+            30% { transform: translateX(-70%) scale(1.3) rotate(-22deg); }
+            70% { transform: translateX(-30%) scale(1.3) rotate(22deg); }
+            100% { transform: translateX(-50%) scale(1) rotate(0deg); }
+        }
+        #depth-popup {
+            position: absolute;
+            left: 50%;
+            top: 45px;
+            transform: translateX(-50%);
+            font-weight: 900;
+            font-size: 1.2rem;
+            color: #00e676;
+            text-shadow: 0 0 10px #000;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .pop-anim {
+            animation: floatUp 1.2s ease-out forwards;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translate(-50%, 0) scale(0.9); }
+            100% { opacity: 0; transform: translate(-50%, -35px) scale(1.2); }
+        }
+
+        /* Interactive Card at Bottom of Arena */
+        .interaction-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(2, 15, 32, 0.88);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 229, 255, 0.4);
+            border-radius: 16px;
+            padding: 18px;
+        }
+        #prompt-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 16px;
+            line-height: 1.35;
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 14px;
+            border-radius: 10px;
+            border: 2px solid #00838f;
+            background: #010a17;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            width: 100%;
+        }
+        input[type="text"]:focus { border-color: #00e5ff; }
+        button {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            background: #00e5ff;
+            color: #010a17;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            touch-action: manipulation;
+        }
+        button:active { transform: scale(0.96); }
+
+        /* Reveal Card */
+        #reveal-box {
+            display: none;
+            text-align: left;
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tier-pill {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .hints-text {
+            font-size: 0.85rem;
+            color: #b2ebf2;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.12);
+            line-height: 1.4;
+        }
+
+        /* End Results Screen */
+        #results-screen {
+            display: none;
+            position: relative;
+            z-index: 10;
+            background: rgba(2, 15, 32, 0.92);
+            border: 1px solid #00e5ff;
+            border-radius: 16px;
+            padding: 22px;
+            text-align: center;
+        }
+        #emoji-strip {
+            font-size: 1.6rem;
+            letter-spacing: 4px;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ocean-arena">
+    <div class="depth-grid">
+        <div class="depth-line">0m — SUNLIGHT</div>
+        <div class="depth-line">1,500m — TWILIGHT</div>
+        <div class="depth-line">3,000m — MIDNIGHT</div>
+        <div class="depth-line">4,500m — ABYSSAL</div>
+        <div class="depth-line" style="border:none;">6,000m+ — HADAL TRENCH</div>
+    </div>
+
+    <!-- Top Header & Timer -->
+    <div class="hud-top">
+        <h1>KRILLION</h1>
+        <div class="stats-row">
+            <span>ROUND <span id="round-num">1</span> • Q<span id="q-num">1</span>/5</span>
+            <span>TIME: <span id="time-text">20s</span></span>
+            <span style="color:#00e5ff;">DEPTH: <span id="depth-text">0m</span></span>
+        </div>
+        <div id="timer-track"><div id="timer-fill"></div></div>
+    </div>
+
+    <!-- Central Swimming Krill Animation Stage -->
+    <div id="swim-stage">
+        <div id="krill-swimmer" class="krill-idle">🦐</div>
+        <div id="depth-popup">+500m!</div>
+    </div>
+
+    <!-- Bottom Question & Answer Box -->
+    <div class="interaction-card" id="play-card">
+        <div id="question-area">
+            <div id="prompt-text">Loading prompt...</div>
+            <div class="input-row">
+                <input type="text" id="answer-input" placeholder="Type a rare answer..." autocomplete="off" autocorrect="off">
+                <button type="button" id="dive-btn">DIVE</button>
+            </div>
+        </div>
+
+        <div id="reveal-box">
+            <div id="tier-pill" class="tier-pill"></div>
+            <div id="reveal-title" style="font-weight: 700; font-size: 1.05rem;"></div>
+            <div id="reveal-hints" class="hints-text"></div>
+            <button type="button" id="next-btn" style="width: 100%; margin-top: 14px;">NEXT DIVE ↓</button>
+        </div>
+    </div>
+
+    <!-- Results Page with Endless Replay -->
+    <div id="results-screen">
+        <div style="font-size: 0.9rem; color: #80deea; text-transform: uppercase; letter-spacing: 1px;">Round Complete</div>
+        <div id="final-depth" style="font-size: 2.6rem; font-weight: 900; color: #00e5ff; margin: 6px 0;">0m</div>
+        <div id="emoji-strip"></div>
+        <div id="rank-label" style="font-size: 1.05rem; color: #b2ebf2; margin-bottom: 18px;"></div>
+        <button type="button" id="share-btn" style="width: 100%; margin-bottom: 10px; background: #00e676;">COPY SCORE 📋</button>
+        <button type="button" id="replay-btn" style="width: 100%;">PLAY ANOTHER ROUND 🌊</button>
+    </div>
+</div>
+
+<script>
+    // Tiers: 1 = Plankton, 2 = Schooler, 3 = Rare, 4 = Deep Cut, 5 = One in a Krillion
+    const questionBank = [
+        {
+            q: "Name a country in South America.",
+            answers: {
+                "brazil": 1, "argentina": 1,
+                "colombia": 2, "chile": 2, "peru": 2,
+                "venezuela": 3, "ecuador": 3, "bolivia": 3,
+                "uruguay": 4, "paraguay": 4,
+                "guyana": 5, "suriname": 5
+            },
+            hints: "Schooler: Chile • Rare: Bolivia • Deep Cut: Paraguay • Krillion: Suriname, Guyana"
+        },
+        {
+            q: "Name a sport played with a racket or paddle.",
+            answers: {
+                "tennis": 1, "badminton": 1, "ping pong": 1, "table tennis": 1,
+                "squash": 2, "pickleball": 2,
+                "racquetball": 3, "padel": 3,
+                "jai alai": 4, "pelota": 4, "beach tennis": 4,
+                "real tennis": 5, "matkot": 5, "speedminton": 5, "tamburello": 5
+            },
+            hints: "Schooler: Squash • Rare: Padel • Deep Cut: Jai Alai • Krillion: Real Tennis, Matkot"
+        },
+        {
+            q: "Name an animal that lays eggs (not a bird).",
+            answers: {
+                "snake": 1, "turtle": 1, "crocodile": 1, "alligator": 1, "fish": 1, "frog": 1,
+                "lizard": 2, "shark": 2, "spider": 2, "bee": 2, "butterfly": 2, "octopus": 2,
+                "platypus": 3, "gecko": 3, "chameleon": 3, "iguana": 3, "salamander": 3,
+                "echidna": 4, "komodo dragon": 4, "axolotl": 4, "seahorse": 4, "stingray": 4,
+                "tuatara": 5, "newt": 5, "caecilian": 5, "hagfish": 5
+            },
+            hints: "Schooler: Octopus • Rare: Platypus • Deep Cut: Echidna, Axolotl • Krillion: Tuatara"
+        },
+        {
+            q: "Name a US state that starts with the letter M.",
+            answers: {
+                "michigan": 1, "maine": 1, "massachusetts": 1, "minnesota": 1,
+                "mississippi": 2, "missouri": 2, "montana": 2,
+                "maryland": 4
+            },
+            hints: "All 8: Maine, Massachusetts, Michigan, Minnesota (Plankton) • Mississippi, Missouri, Montana (Schooler) • Maryland (Deep Cut)"
+        },
+        {
+            q: "Name a musical instrument without strings.",
+            answers: {
+                "drums": 1, "drum": 1, "trumpet": 1, "flute": 1, "saxophone": 1,
+                "clarinet": 2, "trombone": 2, "tuba": 2, "harmonica": 2, "french horn": 2,
+                "oboe": 3, "bassoon": 3, "accordion": 3, "bagpipes": 3, "xylophone": 3,
+                "marimba": 4, "timpani": 4, "piccolo": 4, "kazoo": 4, "bongos": 4,
+                "theremin": 5, "ocarina": 5, "didgeridoo": 5, "handpan": 5, "kalimba": 5
+            },
+            hints: "Schooler: Tuba • Rare: Bagpipes • Deep Cut: Marimba • Krillion: Theremin, Didgeridoo"
+        },
+        {
+            q: "Name a fruit that starts with the letter B.",
+            answers: {
+                "banana": 1, "blueberry": 1,
+                "blackberry": 2,
+                "blood orange": 3, "boysenberry": 3, "breadfruit": 3, "blackcurrant": 3,
+                "bergamot": 4, "butternut squash": 4,
+                "bilberry": 5, "babaco": 5, "baobab": 5, "barberry": 5, "biriba": 5
+            },
+            hints: "Schooler: Blackberry • Rare: Boysenberry • Deep Cut: Bergamot • Krillion: Bilberry, Biriba"
+        },
+        {
+            q: "Name a landlocked country in Europe.",
+            answers: {
+                "switzerland": 1, "austria": 1,
+                "hungary": 2, "czechia": 2, "czech republic": 2,
+                "slovakia": 3, "serbia": 3, "luxembourg": 3,
+                "belarus": 4, "moldova": 4, "north macedonia": 4,
+                "liechtenstein": 5, "lichtenstein": 5, "andorra": 5, "san marino": 5, "kosovo": 5, "vatican city": 5
+            },
+            hints: "Schooler: Hungary • Rare: Slovakia • Deep Cut: Moldova • Krillion: Liechtenstein, San Marino"
+        },
+        {
+            q: "Name a planet or dwarf planet in our Solar System.",
+            answers: {
+                "earth": 1, "mars": 1, "jupiter": 1, "saturn": 1,
+                "venus": 2, "mercury": 2, "uranus": 2, "neptune": 2,
+                "pluto": 3,
+                "ceres": 4, "eris": 4,
+                "makemake": 5, "haumea": 5, "sedna": 5, "quaoar": 5
+            },
+            hints: "Schooler: Neptune • Rare: Pluto • Deep Cut: Ceres, Eris • Krillion: Makemake, Haumea"
+        },
+        {
+            q: "Name a chess piece.",
+            answers: {
+                "pawn": 1, "queen": 1, "king": 1,
+                "knight": 2, "bishop": 3, "rook": 4
+            },
+            hints: "Plankton: Pawn/Queen/King • Schooler: Knight • Rare: Bishop • Deep Cut: Rook"
+        },
+        {
+            q: "Name a month with exactly 30 days.",
+            answers: {
+                "april": 2, "june": 2, "september": 3, "november": 4
+            },
+            hints: "Schooler: April, June • Rare: September • Deep Cut: November"
+        },
+        {
+            q: "Name a color of the rainbow (ROYGBIV).",
+            answers: {
+                "red": 1, "blue": 1, "yellow": 1, "green": 1,
+                "orange": 2, "purple": 2, "violet": 3, "indigo": 4
+            },
+            hints: "Plankton: Red/Blue • Schooler: Orange • Rare: Violet • Deep Cut: Indigo"
+        },
+        {
+            q: "Name a primary taste detected by the human tongue.",
+            answers: {
+                "sweet": 1, "salty": 1, "sour": 2, "bitter": 3, "umami": 5, "savory": 4
+            },
+            hints: "Plankton: Sweet/Salty • Schooler: Sour • Rare: Bitter • Krillion: Umami"
+        },
+        {
+            q: "Name a bone in the human arm or hand.",
+            answers: {
+                "humerus": 2, "radius": 3, "ulna": 3, "carpals": 4, "metacarpals": 4, "phalanges": 5, "scaphoid": 5
+            },
+            hints: "Schooler: Humerus • Rare: Radius, Ulna • Deep Cut: Carpals • Krillion: Phalanges, Scaphoid"
+        },
+        {
+            q: "Name one of the 7 Wonders of the Ancient World.",
+            answers: {
+                "great pyramid": 1, "pyramids": 1, "pyramid of giza": 1,
+                "hanging gardens": 2, "hanging gardens of babylon": 2,
+                "colossus of rhodes": 3, "statue of zeus": 3,
+                "lighthouse of alexandria": 4, "temple of artemis": 4,
+                "mausoleum at halicarnassus": 5, "mausoleum": 5
+            },
+            hints: "Schooler: Hanging Gardens • Rare: Colossus of Rhodes • Deep Cut: Lighthouse of Alexandria • Krillion: Mausoleum at Halicarnassus"
+        },
+        {
+            q: "Name a noble gas on the periodic table.",
+            answers: {
+                "helium": 1, "neon": 2, "argon": 3, "krypton": 4, "xenon": 4, "radon": 5, "oganesson": 5
+            },
+            hints: "Plankton: Helium • Schooler: Neon • Rare: Argon • Deep Cut: Krypton, Xenon • Krillion: Radon, Oganesson"
+        }
+    ];
+
+    const tiers = {
+        1: { name: "Plankton", depth: 100, color: "#90a4ae", text: "#000", emoji: "⬜" },
+        2: { name: "Schooler", depth: 250, color: "#00e5ff", text: "#000", emoji: "🟦" },
+        3: { name: "Rare", depth: 500, color: "#00e676", text: "#000", emoji: "🟩" },
+        4: { name: "Deep Cut", depth: 750, color: "#ff9100", text: "#000", emoji: "🟧" },
+        5: { name: "One in a Krillion!", depth: 1000, color: "#d500f9", text: "#fff", emoji: "🟪" }
+    };
+
+    const QUESTIONS_PER_ROUND = 5;
+    const TIME_LIMIT = 20;
+
+    let deck = [];
+    let roundNumber = 1;
+    let qIndex = 0;
+    let totalDepth = 0;
+    let roundEmojis = [];
+    let timerInterval = null;
+    let timeLeft = TIME_LIMIT;
+    let answered = false;
+
+    // Create ambient rising bubbles inside the arena
+    const arena = document.getElementById("ocean-arena");
+    for (let i = 0; i < 16; i++) {
+        const b = document.createElement("div");
+        b.className = "bubble";
+        const size = Math.random() * 10 + 4 + "px";
+        b.style.width = size;
+        b.style.height = size;
+        b.style.left = Math.random() * 95 + "%";
+        b.style.animationDuration = (Math.random() * 5 + 4) + "s";
+        b.style.animationDelay = (Math.random() * 4) + "s";
+        arena.appendChild(b);
+    }
+
+    function refillAndShuffleDeck() {
+        deck = [...questionBank];
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timeLeft = TIME_LIMIT;
+        const fill = document.getElementById("timer-fill");
+        const text = document.getElementById("time-text");
+        fill.style.width = "100%";
+        fill.style.background = "linear-gradient(90deg, #00e676, #00e5ff)";
+        text.innerText = timeLeft + "s";
+
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                clearInterval(timerInterval);
+                text.innerText = "0s";
+                fill.style.width = "0%";
+                if (!answered) handleSubmission(true);
+            } else {
+                text.innerText = Math.ceil(timeLeft) + "s";
+                fill.style.width = (timeLeft / TIME_LIMIT * 100) + "%";
+                if (timeLeft < 6) {
+                    fill.style.background = "#ff5252";
+                }
+            }
+        }, 100);
+    }
+
+    function animateKrillDive(gainedDepth) {
+        const krill = document.getElementById("krill-swimmer");
+        const stage = document.getElementById("swim-stage");
+        const popup = document.getElementById("depth-popup");
+
+        // Move krill deeper proportionally across the round (max ~5000m)
+        const progress = Math.min(totalDepth / 4500, 1);
+        const maxDrop = stage.clientHeight - 52;
+        krill.style.top = (8 + progress * maxDrop) + "px";
+
+        // Trigger swim burst
+        krill.classList.remove("krill-idle", "krill-burst");
+        void krill.offsetWidth;
+        krill.classList.add("krill-burst");
+        setTimeout(() => {
+            krill.classList.remove("krill-burst");
+            krill.classList.add("krill-idle");
+        }, 1100);
+
+        // Floating +Depth popup
+        popup.innerText = `+${gainedDepth}m!`;
+        popup.style.top = (15 + progress * (maxDrop - 15)) + "px";
+        popup.classList.remove("pop-anim");
+        void popup.offsetWidth;
+        popup.classList.add("pop-anim");
+    }
+
+    function loadQuestion() {
+        if (deck.length === 0) refillAndShuffleDeck();
+        answered = false;
+
+        const current = deck[deck.length - 1];
+        document.getElementById("round-num").innerText = roundNumber;
+        document.getElementById("q-num").innerText = qIndex + 1;
+        document.getElementById("prompt-text").innerText = current.q;
+
+        document.getElementById("question-area").style.display = "block";
+        document.getElementById("reveal-box").style.display = "none";
+
+        const input = document.getElementById("answer-input");
+        input.value = "";
+        input.focus();
+
+        startTimer();
+    }
+
+    function handleSubmission(timedOut = false) {
+        if (answered) return;
+        answered = true;
+        clearInterval(timerInterval);
+
+        const current = deck.pop();
+        const input = document.getElementById("answer-input");
+        const raw = input.value.trim().toLowerCase();
+
+        // No bouncing off: every guess gets at least Tier 1 (Plankton)!
+        let tierNum = 1;
+        if (!timedOut && raw && current.answers[raw]) {
+            tierNum = current.answers[raw];
+        }
+
+        const tierData = tiers[tierNum];
+        // Speed bonus: up to +100m for quick answers
+        const speedBonus = (!timedOut && raw) ? Math.round((timeLeft / TIME_LIMIT) * 100) : 0;
+        const gained = tierData.depth + speedBonus;
+
+        totalDepth += gained;
+        roundEmojis.push(tierData.emoji);
+
+        document.getElementById("depth-text").innerText = totalDepth + "m";
+        animateKrillDive(gained);
+
+        const pill = document.getElementById("tier-pill");
+        pill.innerText = `${tierData.name} (+${tierData.depth}m${speedBonus > 0 ? ` +${speedBonus}m speed` : ""})`;
+        pill.style.backgroundColor = tierData.color;
+        pill.style.color = tierData.text;
+
+        const title = document.getElementById("reveal-title");
+        if (timedOut || !raw) {
+            title.innerText = `Time's up! drifted down with Plankton (+${gained}m)`;
+        } else if (current.answers[raw]) {
+            title.innerText = `"${input.value.trim()}" — ${tierData.name} dive!`;
+        } else {
+            title.innerText = `"${input.value.trim()}" — Safe Plankton drift (+${gained}m)`;
+        }
+
+        document.getElementById("reveal-hints").innerText = current.hints;
+        document.getElementById("question-area").style.display = "none";
+        document.getElementById("reveal-box").style.display = "block";
+    }
+
+    function nextStep() {
+        qIndex++;
+        if (qIndex < QUESTIONS_PER_ROUND) {
+            loadQuestion();
+        } else {
+            showRoundResults();
+        }
+    }
+
+    function showRoundResults() {
+        document.getElementById("play-card").style.display = "none";
+        document.getElementById("results-screen").style.display = "block";
+        document.getElementById("final-depth").innerText = totalDepth + "m";
+        document.getElementById("emoji-strip").innerText = roundEmojis.join(" ");
+
+        let rank = "Sunlight Swimmer";
+        if (totalDepth >= 4000) rank = "Hadal Trench Legend!";
+        else if (totalDepth >= 2800) rank = "Abyssal Explorer";
+        else if (totalDepth >= 1600) rank = "Midnight Zone Diver";
+        document.getElementById("rank-label").innerText = "Rank: " + rank;
+    }
+
+    function startNextRound() {
+        roundNumber++;
+        qIndex = 0;
+        totalDepth = 0;
+        roundEmojis = [];
+
+        document.getElementById("depth-text").innerText = "0m";
+        document.getElementById("krill-swimmer").style.top = "10px";
+        document.getElementById("share-btn").innerText = "COPY SCORE 📋";
+        document.getElementById("results-screen").style.display = "none";
+        document.getElementById("play-card").style.display = "block";
+
+        loadQuestion();
+    }
+
+    document.getElementById("dive-btn").addEventListener("click", () => handleSubmission(false));
+    document.getElementById("next-btn").addEventListener("click", nextStep);
+    document.getElementById("replay-btn").addEventListener("click", startNextRound);
+    document.getElementById("share-btn").addEventListener("click", () => {
+        const text = `🦐 KRILLION (Round ${roundNumber}): ${totalDepth}m\n${roundEmojis.join("")}`;
+        navigator.clipboard.writeText(text);
+        document.getElementById("share-btn").innerText = "COPIED! ✅";
+    });
+    document.getElementById("answer-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleSubmission(false);
+    });
+
+    refillAndShuffleDeck();
+    loadQuestion();
+</script>
+
+</body>
+</html>
